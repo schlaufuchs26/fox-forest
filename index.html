@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fox Forest</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦊</text></svg>">
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --text: #e0e0e0;
+      --accent: #f0a040;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #root {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    canvas {
+      border: 2px solid #2a2a4e;
+      border-radius: 8px;
+      background: #0f3460;
+    }
+    #hud {
+      display: flex;
+      gap: 2rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    #hud span {
+      color: var(--accent);
+    }
+    #message {
+      font-size: 1.5rem;
+      color: var(--accent);
+      min-height: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div id="hud">
+      <div>🍄 <span id="score">0</span></div>
+      <div>❤️ <span id="lives">3</span></div>
+    </div>
+    <canvas id="game" width="600" height="400"></canvas>
+    <div id="message">Arrow keys to move · Collect mushrooms · Avoid wolves!</div>
+  </div>
+  <script type="module" src="./game.ts"></script>
+</body>
+</html>

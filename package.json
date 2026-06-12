@@ -1,7 +1,7 @@
 {
-  "name": "frontend-template",
+  "name": "fox-game",
   "version": "0.1.0",
-  "description": "Minimal Bun + TypeScript + React template for web projects",
+  "description": "Fox Forest — browser game: control a fox, collect mushrooms, avoid wolves",
   "type": "module",
   "scripts": {
     "dev": "bun index.html",

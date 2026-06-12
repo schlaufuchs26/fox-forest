@@ -1,15 +1,23 @@
-# fox-game
+# Fox Forest 🦊
 
-To install dependencies:
+A browser game where you control a fox, collect mushrooms, and avoid wolves. Built with Bun + TypeScript + Canvas.
+
+## To install
 
 ```bash
 bun install
 ```
 
-To run:
+## To run
 
 ```bash
-bun run index.ts
+bun run dev
 ```
 
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## To test
+
+```bash
+bun test
+```
+
+Weekend game prototype, June 2026.

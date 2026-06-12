@@ -1,18 +1,29 @@
+import {
+  type Bounds,
+  createInitialState,
+  type Direction,
+  type Fox,
+  type GameState,
+  type Mushroom,
+  tick,
+  type Wolf,
+} from "./game-logic";
+
 function main() {
   const canvas = document.getElementById("game") as HTMLCanvasElement;
   const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-  const W = canvas.width;
-  const H = canvas.height;
+  const bounds: Bounds = { width: canvas.width, height: canvas.height };
 
-  // --- Fox ---
-  const fox = {
-    x: W / 2,
-    y: H / 2,
-    size: 20,
-    speed: 3,
-    dir: "down" as "up" | "down" | "left" | "right",
-  };
+  // --- Game state (from pure logic) ---
+  let state: GameState = createInitialState(bounds);
+  // Spawn initial mushrooms
+  for (let i = 0; i < 8; i++) {
+    state.mushrooms.push({
+      x: Math.random() * (bounds.width - 40) + 20,
+      y: Math.random() * (bounds.height - 40) + 20,
+    });
+  }
 
   // --- Keys ---
   const keys = new Set<string>();
@@ -25,59 +36,34 @@ function main() {
     e.preventDefault();
   });
 
-  // --- Game state ---
-  let mushrooms: { x: number; y: number }[] = [];
-  let wolves: { x: number; y: number; dx: number; dy: number; size: number }[] =
-    [];
-  let score = 0;
-  let lives = 3;
-  let gameOver = false;
-  let spawnTimer = 0;
-  let wolfTimer = 0;
-
   // --- HUD ---
   const scoreEl = document.getElementById("score") as HTMLElement;
   const livesEl = document.getElementById("lives") as HTMLElement;
   const msgEl = document.getElementById("message") as HTMLElement;
 
-  function spawnMushroom() {
-    mushrooms.push({
-      x: Math.random() * (W - 40) + 20,
-      y: Math.random() * (H - 40) + 20,
-    });
-  }
-
-  function spawnWolf() {
-    const side = Math.floor(Math.random() * 4);
-    let x: number, y: number;
-    if (side === 0) {
-      x = -20;
-      y = Math.random() * H;
-    } else if (side === 1) {
-      x = W + 20;
-      y = Math.random() * H;
-    } else if (side === 2) {
-      x = Math.random() * W;
-      y = -20;
-    } else {
-      x = Math.random() * W;
-      y = H + 20;
+  function syncHUD(prev: GameState) {
+    if (state.score !== prev.score) scoreEl.textContent = String(state.score);
+    if (state.lives !== prev.lives) livesEl.textContent = String(state.lives);
+    if (state.gameOver && !prev.gameOver) {
+      msgEl.textContent = `Game Over! 🍄 Score: ${state.score} — Press R to restart`;
+    } else if (state.lives < prev.lives && state.lives > 0) {
+      msgEl.textContent = `Ouch! ${state.lives} lives left`;
+      setTimeout(() => {
+        if (!state.gameOver)
+          msgEl.textContent =
+            "Arrow keys to move · Collect mushrooms · Avoid wolves!";
+      }, 1500);
+    } else if (!state.gameOver && prev.gameOver) {
+      msgEl.textContent =
+        "Arrow keys to move · Collect mushrooms · Avoid wolves!";
     }
-
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1 + Math.random() * 1.5;
-    wolves.push({
-      x,
-      y,
-      dx: Math.cos(angle) * speed,
-      dy: Math.sin(angle) * speed,
-      size: 18,
-    });
   }
 
-  for (let i = 0; i < 8; i++) spawnMushroom();
+  // ── Drawing ──────────────────────────────────────────
 
-  function drawFox(x: number, y: number, size: number, dir: string) {
+  function drawFox(fox: Fox) {
+    const { x, y, size } = fox;
+    const dir: Direction = fox.dir;
     ctx.save();
     ctx.translate(x, y);
     const angles: Record<string, number> = {
@@ -157,7 +143,8 @@ function main() {
     ctx.restore();
   }
 
-  function drawWolf(x: number, y: number, size: number) {
+  function drawWolf(w: Wolf) {
+    const { x, y, size } = w;
     ctx.save();
     ctx.translate(x, y);
 
@@ -199,7 +186,8 @@ function main() {
     ctx.restore();
   }
 
-  function drawMushroom(x: number, y: number) {
+  function drawMushroom(m: Mushroom) {
+    const { x, y } = m;
     ctx.fillStyle = "#fff";
     ctx.beginPath();
     ctx.ellipse(x, y + 4, 6, 3, 0, 0, Math.PI * 2);
@@ -225,132 +213,46 @@ function main() {
   function drawForestFloor() {
     ctx.fillStyle = "#1a3a1a";
     for (let i = 0; i < 40; i++) {
-      const gx = (i * 137 + 50) % W;
-      const gy = (i * 251 + 50) % H;
+      const gx = (i * 137 + 50) % bounds.width;
+      const gy = (i * 251 + 50) % bounds.height;
       ctx.beginPath();
       ctx.arc(gx, gy, 3 + (i % 4), 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  function update() {
-    if (gameOver) return;
-
-    if (keys.has("ArrowUp") || keys.has("w")) {
-      fox.y -= fox.speed;
-      fox.dir = "up";
-    }
-    if (keys.has("ArrowDown") || keys.has("s")) {
-      fox.y += fox.speed;
-      fox.dir = "down";
-    }
-    if (keys.has("ArrowLeft") || keys.has("a")) {
-      fox.x -= fox.speed;
-      fox.dir = "left";
-    }
-    if (keys.has("ArrowRight") || keys.has("d")) {
-      fox.x += fox.speed;
-      fox.dir = "right";
-    }
-
-    fox.x = Math.max(fox.size, Math.min(W - fox.size, fox.x));
-    fox.y = Math.max(fox.size, Math.min(H - fox.size, fox.y));
-
-    spawnTimer++;
-    if (spawnTimer > 60 && mushrooms.length < 12) {
-      spawnMushroom();
-      spawnTimer = 0;
-    }
-
-    wolfTimer++;
-    const wolfInterval = Math.max(80, 200 - score * 2);
-    if (wolfTimer > wolfInterval && wolves.length < 6) {
-      spawnWolf();
-      wolfTimer = 0;
-    }
-
-    for (const w of wolves) {
-      w.x += w.dx;
-      w.y += w.dy;
-      if (w.x < -10 || w.x > W + 10) w.dx *= -1;
-      if (w.y < -10 || w.y > H + 10) w.dy *= -1;
-    }
-
-    mushrooms = mushrooms.filter((m) => {
-      const dx = fox.x - m.x;
-      const dy = fox.y - m.y;
-      if (Math.sqrt(dx * dx + dy * dy) < fox.size + 10) {
-        score += 10;
-        scoreEl.textContent = String(score);
-        return false;
-      }
-      return true;
-    });
-
-    for (const w of wolves) {
-      const dx = fox.x - w.x;
-      const dy = fox.y - w.y;
-      if (Math.sqrt(dx * dx + dy * dy) < fox.size + w.size - 8) {
-        lives--;
-        livesEl.textContent = String(lives);
-        if (lives <= 0) {
-          gameOver = true;
-          msgEl.textContent = `Game Over! 🍄 Score: ${score} — Press R to restart`;
-        } else {
-          fox.x = W / 2;
-          fox.y = H / 2;
-          msgEl.textContent = `Ouch! ${lives} lives left`;
-          setTimeout(() => {
-            if (!gameOver)
-              msgEl.textContent =
-                "Arrow keys to move · Collect mushrooms · Avoid wolves!";
-          }, 1500);
-        }
-        break;
-      }
-    }
-
-    if (gameOver && keys.has("r")) {
-      score = 0;
-      lives = 3;
-      gameOver = false;
-      mushrooms = [];
-      wolves = [];
-      fox.x = W / 2;
-      fox.y = H / 2;
-      scoreEl.textContent = "0";
-      livesEl.textContent = "3";
-      msgEl.textContent =
-        "Arrow keys to move · Collect mushrooms · Avoid wolves!";
-      for (let i = 0; i < 8; i++) spawnMushroom();
-      keys.delete("r");
-    }
-  }
-
   function draw() {
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, bounds.width, bounds.height);
     ctx.fillStyle = "#0f3460";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, bounds.width, bounds.height);
     drawForestFloor();
 
-    for (const m of mushrooms) drawMushroom(m.x, m.y);
-    for (const w of wolves) drawWolf(w.x, w.y, w.size);
-    if (!gameOver || lives > 0) drawFox(fox.x, fox.y, fox.size, fox.dir);
+    for (const m of state.mushrooms) drawMushroom(m);
+    for (const w of state.wolves) drawWolf(w);
+    if (!state.gameOver || state.lives > 0) drawFox(state.fox);
 
-    if (gameOver) {
+    if (state.gameOver) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, 0, bounds.width, bounds.height);
       ctx.fillStyle = "#f0a040";
       ctx.font = "bold 32px system-ui";
       ctx.textAlign = "center";
-      ctx.fillText("Game Over", W / 2, H / 2 - 10);
+      ctx.fillText("Game Over", bounds.width / 2, bounds.height / 2 - 10);
       ctx.font = "18px system-ui";
-      ctx.fillText(`Score: ${score}`, W / 2, H / 2 + 30);
+      ctx.fillText(
+        `Score: ${state.score}`,
+        bounds.width / 2,
+        bounds.height / 2 + 30,
+      );
     }
   }
 
+  // ── Game loop ────────────────────────────────────────
+
   function gameLoop() {
-    update();
+    const prev = state;
+    state = tick(state, keys, bounds);
+    syncHUD(prev);
     draw();
     requestAnimationFrame(gameLoop);
   }

@@ -250,10 +250,37 @@ describe("spawnMushroom", () => {
 // ── spawnWolf ──────────────────────────────────────────
 
 describe("spawnWolf", () => {
-  test("adds one wolf", () => {
+  test("adds one wolf (left side)", () => {
     const after = spawnWolf(bounds, [], 0, seededRng(123));
     expect(after.length).toBe(1);
     expect(after[0].size).toBe(WOLF_SIZE);
+    expect(after[0].x).toBe(-20);
+    expect(after[0].y).toBeGreaterThanOrEqual(0);
+    expect(after[0].y).toBeLessThanOrEqual(bounds.height);
+  });
+
+  test("spawns from right side (side 1)", () => {
+    const after = spawnWolf(bounds, [], 0, seededRng(31944));
+    expect(after.length).toBe(1);
+    expect(after[0].x).toBe(bounds.width + 20);
+    expect(after[0].y).toBeGreaterThanOrEqual(0);
+    expect(after[0].y).toBeLessThanOrEqual(bounds.height);
+  });
+
+  test("spawns from top side (side 2)", () => {
+    const after = spawnWolf(bounds, [], 0, seededRng(63887));
+    expect(after.length).toBe(1);
+    expect(after[0].y).toBe(-20);
+    expect(after[0].x).toBeGreaterThanOrEqual(0);
+    expect(after[0].x).toBeLessThanOrEqual(bounds.width);
+  });
+
+  test("spawns from bottom side (side 3)", () => {
+    const after = spawnWolf(bounds, [], 0, seededRng(95830));
+    expect(after.length).toBe(1);
+    expect(after[0].y).toBe(bounds.height + 20);
+    expect(after[0].x).toBeGreaterThanOrEqual(0);
+    expect(after[0].x).toBeLessThanOrEqual(bounds.width);
   });
 
   test("does not exceed max", () => {
@@ -397,5 +424,46 @@ describe("tick", () => {
     expect(after.score).toBe(0);
     expect(after.lives).toBe(INITIAL_LIVES);
     expect(after.mushrooms.length).toBe(8);
+  });
+
+  test("spawns mushroom when spawnTimer exceeds interval", () => {
+    const state = createInitialState(bounds);
+    state.spawnTimer = 61;
+    state.mushrooms = [];
+    const after = tick(state, new Set(), bounds, seededRng(1));
+    expect(after.mushrooms.length).toBe(1);
+    expect(after.spawnTimer).toBe(0);
+  });
+
+  test("spawns wolf when wolfTimer exceeds interval", () => {
+    const state = createInitialState(bounds);
+    state.wolfTimer = 250;
+    state.wolves = [];
+    state.score = 0;
+    const after = tick(state, new Set(), bounds, seededRng(1));
+    expect(after.wolves.length).toBe(1);
+    expect(after.wolfTimer).toBe(0);
+  });
+
+  test("does not spawn mushroom when at max", () => {
+    const state = createInitialState(bounds);
+    state.spawnTimer = 61;
+    state.mushrooms = Array.from({ length: 12 }, () => ({ x: 10, y: 10 }));
+    const after = tick(state, new Set(), bounds, seededRng(1));
+    expect(after.mushrooms.length).toBe(12);
+  });
+
+  test("does not spawn wolf when at max", () => {
+    const state = createInitialState(bounds);
+    state.wolfTimer = 250;
+    state.wolves = Array.from({ length: 6 }, () => ({
+      x: 100,
+      y: 100,
+      dx: 1,
+      dy: 1,
+      size: WOLF_SIZE,
+    }));
+    const after = tick(state, new Set(), bounds, seededRng(1));
+    expect(after.wolves.length).toBe(6);
   });
 });
